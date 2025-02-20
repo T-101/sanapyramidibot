@@ -1,3 +1,4 @@
+import datetime
 import asyncio
 import tomllib
 from aiogram import Bot, Dispatcher
@@ -8,7 +9,8 @@ with open("config.toml", "rb") as f:
     config = tomllib.load(f)
 
 TOKEN = config["bot"]["token"]
-CHANNELS = list(config["channels"].values())
+CHANNELS = config["channels"]
+POLL_CONFIG = config["polls"]
 HOUR = config["schedule"]["hour"]
 MINUTE = config["schedule"]["minute"]
 
@@ -18,15 +20,30 @@ dp = Dispatcher()
 
 
 async def send_message():
-    message_text = (
-        "Muistakaa tämän päivän Sanapyramidi!\n\nhttps://yle.fi/a/74-20131998"
-    )
-    for channel in CHANNELS:
+    message_text = "Päivän Sanapyramidi!\n\nhttps://yle.fi/a/74-20131998"
+
+    now = datetime.datetime.now()
+    poll_question = f"Sanapyramidi {now.day}.{now.month}.{now.year}"
+    poll_options = ["0 virhettä", "1 virhe", "2 virhettä", "3 virhettä", "Vituix män"]
+
+    for key, channel in CHANNELS.items():
         try:
             await bot.send_message(chat_id=channel, text=message_text)
             print(f"✅ Message sent to {channel}")
+
+            # Send a poll if configured
+            if POLL_CONFIG.get(key, False):
+                await bot.send_poll(
+                    chat_id=channel,
+                    question=poll_question,
+                    options=poll_options,
+                    is_anonymous=False,
+                    allows_multiple_answers=False,
+                )
+                print(f"📊 Poll sent to {channel}")
+
         except Exception as e:
-            print(f"❌ Failed to send message to {channel}: {e}")
+            print(f"❌ Failed to send message/poll to {channel}: {e}")
 
 
 scheduler = AsyncIOScheduler()
