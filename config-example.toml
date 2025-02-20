@@ -1,0 +1,11 @@
+[bot]
+token = "YourVeryComplicated:BotToken"
+
+[channels]
+channel_1 = "-123456789"
+# channel_2 = "your_second_channel"
+# channel_3 = "your_third_channel"
+
+[schedule]
+hour = 7
+minute = 15
