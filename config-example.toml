@@ -6,6 +6,11 @@ channel_1 = "-123456789"
 # channel_2 = "your_second_channel"
 # channel_3 = "your_third_channel"
 
+[polls]
+channel_1 = true
+# channel_2 = false
+# channel_3 = false
+
 [schedule]
 hour = 7
 minute = 15
