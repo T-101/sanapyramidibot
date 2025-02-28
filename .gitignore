@@ -1,1 +1,5 @@
+.idea/
+
 config.toml
+poll_results.db
+*.pyc
