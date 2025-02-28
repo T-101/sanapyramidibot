@@ -32,7 +32,7 @@ async def send_daily_poll(bot: Bot):
 
 async def send_message(bot: Bot):
     """Send scheduled messages and a poll (if enabled)."""
-    message_text = "Good morning! ☀️ Have a great day!"
+    message_text = "Päivän Sanapyramidi!\n\nhttps://yle.fi/a/74-20131998"
     options = await get_poll_options()
 
     for channel in Config.CHANNELS:
