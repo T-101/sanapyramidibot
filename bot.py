@@ -1,74 +1,61 @@
-import datetime
 import asyncio
-import tomllib
-from aiogram import Bot, Dispatcher
-from aiogram.client.session.aiohttp import AiohttpSession
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import aiosqlite
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+from aiogram.types import PollAnswer
+from config import Config
+from database import setup_db, save_poll_response, get_monthly_stats, is_valid_poll
+from scheduler import schedule_tasks
 
-with open("config.toml", "rb") as f:
-    config = tomllib.load(f)
-
-TOKEN = config["bot"]["token"]
-CHANNELS = config["channels"]
-POLL_CONFIG = config["polls"]
-HOUR = config["schedule"]["hour"]
-MINUTE = config["schedule"]["minute"]
-
-session = AiohttpSession()
-bot = Bot(token=TOKEN, session=session)
+# Initialize bot and dispatcher
+bot = Bot(token=Config.TOKEN)
 dp = Dispatcher()
 
+@dp.message(Command("stats"))
+async def stats_command(message: types.Message):
+    """Handles the /stats command and returns stats for the issuing channel."""
+    if not message.chat.id:
+        await message.answer("❌ This command can only be used in channels.")
+        return
 
-async def send_message():
-    message_text = "Päivän Sanapyramidi!\n\nhttps://yle.fi/a/74-20131998"
+    channel_id = str(message.chat.id)  # Convert to string for DB consistency
+    stats = await get_monthly_stats(channel_id)
+    await message.answer(stats)
 
-    now = datetime.datetime.now()
-    poll_question = f"Sanapyramidi {now.day}.{now.month}.{now.year}"
-    poll_options = ["0 virhettä", "1 virhe", "2 virhettä", "3 virhettä", "Vituix män"]
+@dp.poll_answer()
+async def handle_poll_answer(poll_answer: PollAnswer):
+    """Handles poll answers, ensuring only our daily poll is tracked."""
+    user_id = poll_answer.user.id
+    username = poll_answer.user.username or "Unknown"
+    poll_id = poll_answer.poll_id
+    chosen_option_index = poll_answer.option_ids[0]
 
-    for key, channel in CHANNELS.items():
-        try:
-            await bot.send_message(chat_id=channel, text=message_text)
-            print(f"✅ Message sent to {channel}")
+    if not await is_valid_poll(poll_id):
+        print(f"🚫 Ignoring poll response from {username} (not a daily poll)")
+        return
 
-            # Send a poll if configured
-            if POLL_CONFIG.get(key, False):
-                await bot.send_poll(
-                    chat_id=channel,
-                    question=poll_question,
-                    options=poll_options,
-                    is_anonymous=False,
-                    allows_multiple_answers=False,
-                )
-                print(f"📊 Poll sent to {channel}")
+    # Fetch channel ID and name from daily_polls table
+    async with aiosqlite.connect(Config.DB_FILE) as db:
+        async with db.execute("SELECT channel_id, channel_name FROM daily_polls WHERE poll_id = ?", (poll_id,)) as cursor:
+            row = await cursor.fetchone()
 
-        except Exception as e:
-            print(f"❌ Failed to send message/poll to {channel}: {e}")
+    if row is None:
+        print(f"❌ Could not find channel info for poll_id {poll_id}")
+        return
 
+    channel_id, channel_name = row
+    chosen_option_text = Config.POLL_OPTIONS[chosen_option_index]
 
-scheduler = AsyncIOScheduler()
-scheduler.add_job(send_message, "cron", hour=HOUR, minute=MINUTE)
-
-
-# This would say a greeting when bot is started
-#
-# @dp.message()
-# async def echo(message):
-#      await message.answer("I'm a scheduled bot! I post messages at specific times.")
+    print(f"📝 {username} voted in {channel_name} ({channel_id}): {chosen_option_text}")
+    await save_poll_response(poll_id, user_id, username, chosen_option_text, channel_id, channel_name)
 
 
 async def main():
-    scheduler.start()
-    print(f"🤖 Bot is running and scheduling messages at {HOUR}:{MINUTE}")
-
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
-
+    """Main bot loop."""
+    await setup_db()
+    schedule_tasks(bot)
+    print("🚀 Bot is running...")
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("Bot stopped manually.")
+    asyncio.run(main())
