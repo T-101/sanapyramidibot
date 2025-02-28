@@ -1,15 +1,15 @@
 [bot]
 token = "YourVeryComplicated:BotToken"
+debug = false
 
 [channels]
 channel_1 = "-123456789"
 # channel_2 = "your_second_channel"
 # channel_3 = "your_third_channel"
 
-[polls]
-channel_1 = true
-# channel_2 = false
-# channel_3 = false
+[poll]
+question = "Päivän Sanapyramidin suoritukset"
+options = ["0 virhettä", "1 virhe", "2 virhettä", "3 virhettä", "Vituix män"]
 
 [schedule]
 hour = 7
