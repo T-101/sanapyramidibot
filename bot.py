@@ -26,7 +26,7 @@ async def stats_command(message: types.Message):
 async def handle_poll_answer(poll_answer: PollAnswer):
     """Handles poll answers, ensuring only our daily poll is tracked."""
     user_id = poll_answer.user.id
-    username = poll_answer.user.username or "Unknown"
+    username = poll_answer.user.full_name or poll_answer.user.username or "Unknown"
     poll_id = poll_answer.poll_id
     chosen_option_index = poll_answer.option_ids[0]
 
