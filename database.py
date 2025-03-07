@@ -107,3 +107,15 @@ async def get_monthly_stats(channel_id):
 
     stats = "\n".join([f"{option}: {count} votes" for option, count in results])
     return f"📊 **Monthly Poll Stats for this channel**:\n{stats}"
+
+
+async def get_weekly_stats(channel_id):
+    async with aiosqlite.connect(Config.DB_FILE) as db:
+        async with db.execute("""
+            SELECT pr.username, po.sort_order
+            FROM poll_results pr
+            JOIN poll_options po ON pr.option_id = po.id
+            WHERE pr.timestamp >= date('now', '-7 days') AND pr.channel_id = ?
+        """, (channel_id,)) as cursor:
+            votes = await cursor.fetchall()
+    return votes
