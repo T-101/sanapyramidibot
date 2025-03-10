@@ -8,31 +8,6 @@ POINTS_MAPPING = {1: 5, 2: 3, 3: 2, 4: 1, 5: 0}
 
 scheduler = AsyncIOScheduler()
 
-async def send_daily_poll(bot: Bot):
-    """Sends a daily poll to all configured channels and saves poll metadata."""
-    question = Config.POLL_QUESTION
-    options = await get_poll_options()
-
-    for channel in Config.CHANNELS:
-        channel_id = channel["id"]
-        channel_name = channel["name"]
-        include_poll = channel.get("include_poll", True)  # Default to True
-
-        try:
-            poll_message = await bot.send_poll(
-                chat_id=channel_id,
-                question=question,
-                options=options,
-                is_anonymous=False
-            )
-
-            poll_id = poll_message.poll.id
-            await save_poll_metadata(poll_id, channel_id, channel_name)
-            print(f"✅ Poll sent to {channel_name} ({channel_id})")
-
-        except Exception as e:
-            print(f"❌ Failed to send poll to {channel_name} ({channel_id}): {e}")
-
 async def send_message(bot: Bot):
     """Send scheduled messages and a poll (if enabled)."""
     message_text = "Päivän Sanapyramidi!\n\nhttps://yle.fi/a/74-20131998"
@@ -98,8 +73,9 @@ async def weekly_stats(channel_id):
 async def send_weekly_stats(bot: Bot):
     """Send weekly stats to all configured channels."""
     for channel in Config.CHANNELS:
-        channel_id = channel["id"]
-        channel_name = channel["name"]
+        chat = await bot.get_chat(chat_id=channel)
+        channel_id = chat.id
+        channel_name = chat.title or chat.username or "Unknown Channel"
         stats = await weekly_stats(channel_id)
 
         try:
@@ -113,7 +89,6 @@ async def send_weekly_stats(bot: Bot):
 
 def schedule_tasks(bot: Bot):
     """Schedule daily messages and polls."""
-    # scheduler.add_job(send_daily_poll, "cron", hour=Config.HOUR, minute=Config.MINUTE, args=[bot])
     scheduler.add_job(send_message, "cron", hour=Config.HOUR, minute=Config.MINUTE, args=[bot])
     scheduler.add_job(send_weekly_stats, "cron", day_of_week="mon", hour=Config.HOUR, minute=0, args=[bot])
     scheduler.start()
