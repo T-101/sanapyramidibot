@@ -4,11 +4,11 @@ from database import save_poll_metadata, get_poll_options, get_weekly_stats
 from config import Config
 
 # Define point values for each poll option (indexed from 0)
-POINTS_MAPPING = {1: 5, 2: 3, 3: 2, 4: 1, 5: 0}
+POINTS_MAPPING = {1: 5, 2: 3, 3: 1, 4: 0}
 
 scheduler = AsyncIOScheduler()
 
-async def send_message(bot: Bot):
+async def send_poll(bot: Bot):
     """Send scheduled messages and a poll (if enabled)."""
     message_text = "Päivän Sanapyramidi!\n\nhttps://yle.fi/a/74-20131998"
     options = await get_poll_options()
@@ -46,9 +46,11 @@ async def weekly_stats(channel_id):
 
     # Calculate scores
     user_scores = {}
+    user_answers = {}
     for username, sort_order in votes:
         points = POINTS_MAPPING.get(sort_order + 1, 0)  # Convert 0-based index to 1-based
         user_scores[username] = user_scores.get(username, 0) + points
+        user_answers[username] = user_answers.get(username, 0) + 1
 
     # Sort users by score (highest first) & apply sports-style ranking
     sorted_scores = sorted(user_scores.items(), key=lambda x: x[1], reverse=True)
@@ -64,7 +66,7 @@ async def weekly_stats(channel_id):
         if score != prev_score:  # Only update rank if score is different
             rank = actual_position
 
-        result_lines.append(f"{rank}. {username} - {score}p")
+        result_lines.append(f"{rank}. {username} - **{score}p** __({user_answers[username]} kpl)__")
         prev_score = score
 
     return "🏆 **Edellisviikon tulokset** 🏆\n" + "\n".join(result_lines)
@@ -89,6 +91,6 @@ async def send_weekly_stats(bot: Bot):
 
 def schedule_tasks(bot: Bot):
     """Schedule daily messages and polls."""
-    scheduler.add_job(send_message, "cron", hour=Config.HOUR, minute=Config.MINUTE, args=[bot])
+    scheduler.add_job(send_poll, "cron", hour=Config.HOUR, minute=Config.MINUTE, args=[bot])
     scheduler.add_job(send_weekly_stats, "cron", day_of_week="mon", hour=Config.HOUR, minute=0, args=[bot])
     scheduler.start()
