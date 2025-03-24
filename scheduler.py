@@ -69,7 +69,7 @@ async def weekly_stats(channel_id):
         result_lines.append(f"{rank}. {username} - *{score}p* _({user_answers[username]} kpl)_")
         prev_score = score
 
-    return "🏆 **Edellisviikon tulokset** 🏆\n" + "\n".join(result_lines)
+    return "🏆 *Edellisviikon tulokset* 🏆\n" + "\n".join(result_lines)
 
 
 async def send_weekly_stats(bot: Bot):
