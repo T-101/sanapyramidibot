@@ -1,5 +1,3 @@
-import re
-
 from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from database import save_poll_metadata, get_poll_options, get_weekly_stats
@@ -68,7 +66,7 @@ async def weekly_stats(channel_id):
         if score != prev_score:  # Only update rank if score is different
             rank = actual_position
 
-        result_lines.append(re.escape(f"{rank}. {username} - *{score}p* _({user_answers[username]} kpl)_"))
+        result_lines.append(f"{rank}. {username} - *{score}p* _({user_answers[username]} kpl)_")
         prev_score = score
 
     return "🏆 **Edellisviikon tulokset** 🏆\n" + "\n".join(result_lines)
@@ -83,7 +81,7 @@ async def send_weekly_stats(bot: Bot):
         stats = await weekly_stats(channel_id)
 
         try:
-            await bot.send_message(chat_id=channel_id, text=stats, parse_mode="MarkdownV2")
+            await bot.send_message(chat_id=channel_id, text=stats, parse_mode="Markdown")
             print(f"✅ Weekly stats sent to {channel_name} ({channel_id})")
 
         except Exception as e:
