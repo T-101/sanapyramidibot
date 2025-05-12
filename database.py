@@ -107,6 +107,15 @@ async def save_poll_response(poll_id, user_id, username, option_text, channel_id
         await db.commit()
 
 
+async def delete_poll_response(poll_id, user_id):
+    async with aiosqlite.connect(Config.DB_FILE) as db:
+        await db.execute("""
+            DELETE FROM poll_results 
+            WHERE poll_id = ? AND user_id = ?
+        """, (poll_id, user_id))
+        await db.commit()
+
+
 async def get_monthly_stats(channel_id):
     """Retrieve poll stats for the last 30 days, filtered by channel, sorted properly."""
     async with aiosqlite.connect(Config.DB_FILE) as db:

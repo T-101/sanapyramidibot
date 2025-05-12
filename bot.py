@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import PollAnswer
 from config import Config
-from database import setup_db, save_poll_response, get_monthly_stats, is_valid_poll
+from database import setup_db, save_poll_response, get_monthly_stats, is_valid_poll, delete_poll_response
 from scheduler import schedule_tasks
 
 # Initialize bot and dispatcher
@@ -28,7 +28,14 @@ async def handle_poll_answer(poll_answer: PollAnswer):
     user_id = poll_answer.user.id
     username = poll_answer.user.full_name or poll_answer.user.username or "Unknown"
     poll_id = poll_answer.poll_id
-    chosen_option_index = poll_answer.option_ids[0]
+    # chosen_option_index = poll_answer.option_ids[0]
+    option_ids = poll_answer.option_ids
+
+    if not option_ids:
+        # User retracted their vote – delete their previous vote from DB
+        await delete_poll_response(poll_id, user_id)
+        print(f"❌ User {user_id} retracted their vote from poll {poll_id}")
+        return
 
     if not await is_valid_poll(poll_id):
         print(f"🚫 Ignoring poll response from {username} (not a daily poll)")
@@ -44,7 +51,7 @@ async def handle_poll_answer(poll_answer: PollAnswer):
         return
 
     channel_id, channel_name = row
-    chosen_option_text = Config.POLL_OPTIONS[chosen_option_index]
+    chosen_option_text = Config.POLL_OPTIONS[option_ids[0]]
 
     print(f"📝 {username} voted in {channel_name} ({channel_id}): {chosen_option_text}")
     await save_poll_response(poll_id, user_id, username, chosen_option_text, channel_id, channel_name)
