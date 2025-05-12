@@ -76,18 +76,36 @@ async def is_valid_poll(poll_id):
             return await cursor.fetchone() is not None
 
 async def save_poll_response(poll_id, user_id, username, option_text, channel_id, channel_name):
-    """Save a user's poll response with an option ID instead of raw text."""
+    """Save or update a user's poll response with an option ID instead of raw text."""
     option_id = await get_option_id(option_text)
     if option_id is None:
         print(f"⚠️ Option '{option_text}' not found in database!")
         return
 
     async with aiosqlite.connect(Config.DB_FILE) as db:
-        await db.execute("""
-            INSERT INTO poll_results (poll_id, user_id, username, option_id, channel_id, channel_name) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (poll_id, user_id, username, option_id, channel_id, channel_name))
+        # Check if there's already a response for this user and poll
+        cursor = await db.execute("""
+            SELECT id FROM poll_results
+            WHERE poll_id = ? AND user_id = ?
+        """, (poll_id, user_id))
+        existing = await cursor.fetchone()
+
+        if existing:
+            # Update existing record
+            await db.execute("""
+                UPDATE poll_results
+                SET option_id = ?, username = ?, channel_id = ?, channel_name = ?, timestamp = CURRENT_TIMESTAMP
+                WHERE poll_id = ? AND user_id = ?
+            """, (option_id, username, channel_id, channel_name, poll_id, user_id))
+        else:
+            # Insert new record
+            await db.execute("""
+                INSERT INTO poll_results (poll_id, user_id, username, option_id, channel_id, channel_name) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (poll_id, user_id, username, option_id, channel_id, channel_name))
+
         await db.commit()
+
 
 async def get_monthly_stats(channel_id):
     """Retrieve poll stats for the last 30 days, filtered by channel, sorted properly."""
